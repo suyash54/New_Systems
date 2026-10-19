@@ -1,0 +1,85 @@
+classDiagram
+    class Pizza {
+      <<interface>>
+      +getBaseCost() double
+      +getToppingServings() Map
+      +getSize() PizzaSize
+      +getBaseTaxRate() double
+    }
+    class PlainPizza {
+      -PizzaSize size
+      -double basePrice
+      -double baseTaxRate
+    }
+    class ToppingDecorator {
+      -Pizza wrapped
+      -ToppingType type
+      -int servings
+      -ToppingPricingStrategy pricingStrategy
+      +getBaseCost() double
+      +getToppingServings() Map
+    }
+    Pizza <|.. PlainPizza
+    Pizza <|.. ToppingDecorator
+    ToppingDecorator o-- Pizza : wraps
+
+    class ToppingValidationRule {
+      <<interface>>
+      +validate(existingServings, size, topping, servings)
+    }
+    class CheeseburstMushroomExclusivityRule
+    class CheeseburstMaxServingsRule
+    class PineappleSizeRestrictionRule
+    ToppingValidationRule <|.. CheeseburstMushroomExclusivityRule
+    ToppingValidationRule <|.. CheeseburstMaxServingsRule
+    ToppingValidationRule <|.. PineappleSizeRestrictionRule
+
+    class ToppingRuleEngine {
+      -List~ToppingValidationRule~ rules
+      +validateAll(existing, size, topping, servings)
+    }
+    ToppingRuleEngine o-- ToppingValidationRule
+    ToppingDecorator --> ToppingRuleEngine : validates against flattened state
+
+    class ToppingPricingStrategy {
+      <<interface>>
+      +calculateCost(size, existingServings, newServings) int
+    }
+    class DefaultPricingStrategy {
+      -int perServingCost
+    }
+    class CornPricingStrategy
+    ToppingPricingStrategy <|.. DefaultPricingStrategy
+    ToppingPricingStrategy <|.. CornPricingStrategy
+
+    class ToppingPricingRegistry {
+      -Map strategies
+      +get(type) ToppingPricingStrategy
+    }
+    ToppingPricingRegistry o-- ToppingPricingStrategy
+    ToppingDecorator --> ToppingPricingRegistry : prices itself via
+
+    class TaxModifier {
+      <<interface>>
+      +isApplicable(toppingServings) bool
+      +apply(rate) double
+    }
+    class CheeseburstTaxModifier
+    class MushroomTaxModifier
+    TaxModifier <|.. CheeseburstTaxModifier
+    TaxModifier <|.. MushroomTaxModifier
+
+    class PriceBreakdown {
+      -double subtotal
+      -double effectiveTaxRate
+      -double taxAmount
+      -double finalPrice
+    }
+
+    class PizzaPriceCalculator {
+      -List~TaxModifier~ taxModifiers
+      +calculate(pizza) PriceBreakdown
+    }
+    PizzaPriceCalculator o-- TaxModifier
+    PizzaPriceCalculator --> Pizza : reads outermost decorated pizza
+    PizzaPriceCalculator ..> PriceBreakdown : creates
